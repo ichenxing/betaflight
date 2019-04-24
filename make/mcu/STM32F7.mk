@@ -41,8 +41,6 @@ EXCLUDES        = stm32f7xx_hal_can.c \
                   stm32f7xx_hal_nor.c \
                   stm32f7xx_hal_qspi.c \
                   stm32f7xx_hal_rng.c \
-                  stm32f7xx_hal_rtc.c \
-                  stm32f7xx_hal_rtc_ex.c \
                   stm32f7xx_hal_sai.c \
                   stm32f7xx_hal_sai_ex.c \
                   stm32f7xx_hal_sd.c \
@@ -117,7 +115,13 @@ INCLUDE_DIRS    := $(INCLUDE_DIRS) \
                    $(ROOT)/lib/main/STM32F7/Drivers/CMSIS/Device/ST/STM32F7xx/Include \
                    $(ROOT)/src/main/vcp_hal
 
-ifneq ($(filter SDCARD,$(FEATURES)),)
+ifneq ($(filter SDCARD_SPI,$(FEATURES)),)
+INCLUDE_DIRS    := $(INCLUDE_DIRS) \
+                   $(FATFS_DIR)
+VPATH           := $(VPATH):$(FATFS_DIR)
+endif
+
+ifneq ($(filter SDCARD_SDIO,$(FEATURES)),)
 INCLUDE_DIRS    := $(INCLUDE_DIRS) \
                    $(FATFS_DIR)
 VPATH           := $(VPATH):$(FATFS_DIR)
@@ -164,7 +168,7 @@ VCP_SRC = \
             drivers/usb_io.c
 
 MCU_COMMON_SRC = \
-            target/system_stm32f7xx.c \
+            startup/system_stm32f7xx.c \
             drivers/accgyro/accgyro_mpu.c \
             drivers/adc_stm32f7xx.c \
             drivers/audio_stm32f7xx.c \
@@ -173,7 +177,9 @@ MCU_COMMON_SRC = \
             drivers/light_ws2811strip_hal.c \
             drivers/transponder_ir_io_hal.c \
             drivers/bus_spi_ll.c \
+            drivers/persistent.c \
             drivers/pwm_output_dshot_hal.c \
+            drivers/pwm_output_dshot_shared.c \
             drivers/timer_hal.c \
             drivers/timer_stm32f7xx.c \
             drivers/system_stm32f7xx.c \
@@ -189,14 +195,14 @@ MSC_SRC = \
             drivers/usb_msc_f7xx.c \
             msc/usbd_storage.c
 
-ifneq ($(filter SDIO,$(FEATURES)),)
+ifneq ($(filter SDCARD_SDIO,$(FEATURES)),)
 MCU_COMMON_SRC += \
             drivers/sdio_f7xx.c            
 MSC_SRC += \
             msc/usbd_storage_sdio.c
 endif
 
-ifneq ($(filter SDCARD,$(FEATURES)),)
+ifneq ($(filter SDCARD_SPI,$(FEATURES)),)
 MSC_SRC += \
             msc/usbd_storage_sd_spi.c
 endif

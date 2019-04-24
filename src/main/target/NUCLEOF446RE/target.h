@@ -56,7 +56,8 @@
 
 #define USE_EXTI
 
-//#define MPU_INT_EXTI PC13
+//#define USE_GYRO_EXTI
+//#define GYRO_1_EXTI_PIN PC13
 //#define USE_MPU_DATA_READY_SIGNAL
 //#define ENSURE_MPU_DATA_READY_IS_LOW
 
@@ -91,14 +92,12 @@
 // Nordic Semiconductor uses 'CSN', STM uses 'NSS'
 #define RX_CE_PIN               PC7 // D9
 #define RX_NSS_PIN              PB6 // D10
-#define RX_SCK_PIN              PA5 // D13
-#define RX_MISO_PIN             PA6 // D12
-#define RX_MOSI_PIN             PA7 // D11
 // NUCLEO has NSS on PB6, rather than the standard PA4
+
 #define SPI1_NSS_PIN            RX_NSS_PIN
-#define SPI1_SCK_PIN            RX_SCK_PIN
-#define SPI1_MISO_PIN           RX_MISO_PIN
-#define SPI1_MOSI_PIN           RX_MOSI_PIN
+#define SPI1_SCK_PIN            PA5 // D13
+#define SPI1_MISO_PIN           PA6 // D12
+#define SPI1_MOSI_PIN           PA7 // D11
 
 #define USE_RX_NRF24
 #define USE_RX_CX10
@@ -132,7 +131,6 @@
 
 #define USE_ESCSERIAL
 #define ESCSERIAL_TIMER_TX_PIN  PB8  // (HARDARE=0,PPM)
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
 
 #define USE_I2C
 
@@ -147,7 +145,9 @@
 
 #define USE_ADC
 #define ADC_INSTANCE            ADC1
+#define ADC1_DMA_OPT            1  // DMA 2 Stream 4 Channel 0 (compat default)
 //#define ADC_INSTANCE            ADC2
+//#define ADC2_DMA_OPT            1  // DMA 2 Stream 3 Channel 1 (compat default)
 #define VBAT_ADC_PIN            PC0
 #define CURRENT_METER_ADC_PIN   PC1
 #define RSSI_ADC_PIN            PC2

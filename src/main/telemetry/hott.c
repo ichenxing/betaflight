@@ -63,7 +63,7 @@
 #include "platform.h"
 
 
-#ifdef USE_TELEMETRY
+#ifdef USE_TELEMETRY_HOTT
 
 #include "build/build_config.h"
 #include "build/debug.h"
@@ -279,10 +279,11 @@ static inline void updateAlarmBatteryStatus(HOTT_EAM_MSG_t *hottEAMMessage)
 
 static inline void hottEAMUpdateBattery(HOTT_EAM_MSG_t *hottEAMMessage)
 {
-    hottEAMMessage->main_voltage_L = getBatteryVoltage() & 0xFF;
-    hottEAMMessage->main_voltage_H = getBatteryVoltage() >> 8;
-    hottEAMMessage->batt1_voltage_L = getBatteryVoltage() & 0xFF;
-    hottEAMMessage->batt1_voltage_H = getBatteryVoltage() >> 8;
+    const uint16_t volt = getLegacyBatteryVoltage();
+    hottEAMMessage->main_voltage_L = volt & 0xFF;
+    hottEAMMessage->main_voltage_H = volt >> 8;
+    hottEAMMessage->batt1_voltage_L = volt & 0xFF;
+    hottEAMMessage->batt1_voltage_H = volt >> 8;
 
     updateAlarmBatteryStatus(hottEAMMessage);
 }
@@ -483,6 +484,7 @@ static void hottTextmodeStop()
     // Set back to avoid slow down of the FC
     if (telemetryTaskPeriod > 0) {
         rescheduleTask(TASK_TELEMETRY, telemetryTaskPeriod);
+        telemetryTaskPeriod = 0;
     }
 
     rxSchedule = HOTT_RX_SCHEDULE;

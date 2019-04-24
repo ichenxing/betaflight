@@ -26,11 +26,6 @@
 #define TARGET_BOARD_IDENTIFIER "LUX"
 #endif
 
-// Removed to make the firmware fit into flash (in descending order of priority):
-#undef USE_RTC_TIME
-#undef USE_RX_MSP
-#undef USE_ESC_SENSOR_INFO
-
 #define DEFAULT_VOLTAGE_METER_SOURCE VOLTAGE_METER_ADC
 
 
@@ -77,36 +72,35 @@
 #define SPI2_MOSI_PIN           PB15
 
 #define USE_SDCARD
+#define USE_SDCARD_SPI
 #define SDCARD_DETECT_INVERTED
 #define SDCARD_DETECT_PIN                   PC13
 #define SDCARD_SPI_INSTANCE                 SPI2
 #define SDCARD_SPI_CS_PIN                   SPI2_NSS_PIN
 
 // Note, this is the same DMA channel as UART1_RX. Luckily we don't use DMA for USART Rx.
-#define SDCARD_DMA_CHANNEL_TX               DMA1_Channel5
+#define SDCARD_SPI_DMA_OPT                  0    // DMA 1 Channel 5
 #endif
 
 #define GYRO_1_CS_PIN           SPI1_NSS_PIN
 #define GYRO_1_SPI_INSTANCE     SPI1
 
 #define USE_GYRO
+#define GYRO_1_ALIGN       CW270_DEG
 #ifdef LUXV2_RACE
 #define USE_GYRO_SPI_MPU6000
-#define GYRO_1_ALIGN       CW270_DEG
 #else
 #define USE_GYRO_SPI_MPU6500
-#define GYRO_1_ALIGN       CW270_DEG
 #endif
 
 #define USE_ACC
+#define ACC_1_ALIGN       CW270_DEG
 #ifdef LUXV2_RACE
 #define USE_ACC_MPU6000
 #define USE_ACC_SPI_MPU6000
-#define ACC_1_ALIGN       CW270_DEG
 #else
 #define USE_ACC_MPU6500
 #define USE_ACC_SPI_MPU6500
-#define ACC_1_ALIGN       CW270_DEG
 #endif
 
 #define USE_VCP
@@ -152,8 +146,6 @@
 #else
 #define DEFAULT_FEATURES        (FEATURE_TELEMETRY)
 #endif
-
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
 
 #define USE_ESCSERIAL
 #define ESCSERIAL_TIMER_TX_PIN  PA8  // (HARDARE=0,PPM)

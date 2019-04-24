@@ -24,8 +24,7 @@
 
 #include "platform.h"
 
-#ifdef USE_SERIAL_RX
-#ifdef USE_TELEMETRY
+#if defined(USE_TELEMETRY_JETIEXBUS)
 
 #include "build/build_config.h"
 #include "build/debug.h"
@@ -307,7 +306,7 @@ int32_t getSensorValue(uint8_t sensor)
 {
     switch (sensor) {
     case EX_VOLTAGE:
-        return getBatteryVoltage();
+        return getLegacyBatteryVoltage();
         break;
 
     case EX_CURRENT:
@@ -323,7 +322,7 @@ int32_t getSensorValue(uint8_t sensor)
         break;
 
     case EX_POWER:
-        return (getBatteryVoltage() * getAmperage() / 100);
+        return (getBatteryVoltage() * getAmperage() / 1000);
         break;
 
     case EX_ROLL_ANGLE:
@@ -344,6 +343,7 @@ int32_t getSensorValue(uint8_t sensor)
         break;
 #endif
 
+#ifdef USE_GPS
     case EX_GPS_SATS:
         return gpsSol.numSat;
     break;
@@ -375,7 +375,9 @@ int32_t getSensorValue(uint8_t sensor)
     case EX_GPS_ALTITUDE:
         return gpsSol.llh.altCm;
     break;
+#endif
 
+#if defined(USE_ACC)
     case EX_GFORCE_X:
        return (int16_t)(((float)acc.accADC[0] / acc.dev.acc_1G) * 1000);
     break;
@@ -387,6 +389,7 @@ int32_t getSensorValue(uint8_t sensor)
     case EX_GFORCE_Z:
         return (int16_t)(((float)acc.accADC[2] / acc.dev.acc_1G) * 1000);
     break;
+#endif
 
     default:
         return -1;
@@ -553,5 +556,4 @@ uint8_t sendJetiExBusTelemetry(uint8_t packetID, uint8_t item)
 
     return item;
 }
-#endif // TELEMETRY
-#endif // SERIAL_RX
+#endif

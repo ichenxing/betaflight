@@ -1,4 +1,5 @@
 # A sample Makefile for building Google Test and using it in user
+# A sample Makefile for building Google Test and using it in user
 # tests.  Please tweak it to suit your environment and project.  You
 # may want to move it to your project's root directory.
 #
@@ -19,6 +20,8 @@ TARGET_DIR = $(USER_DIR)/target
 include $(ROOT)/make/system-id.mk
 include $(ROOT)/make/targets_list.mk
 
+VPATH := $(VPATH):$(USER_DIR):$(TEST_DIR)
+
 # specify which files that are included in the test in addition to the unittest file.
 # variables available:
 #   <test_name>_SRC
@@ -37,7 +40,11 @@ arming_prevention_unittest_SRC := \
 		$(USER_DIR)/fc/rc_controls.c \
 		$(USER_DIR)/fc/rc_modes.c \
 		$(USER_DIR)/fc/runtime_config.c \
+		$(USER_DIR)/flight/gps_rescue.c \
 		$(USER_DIR)/common/bitarray.c
+
+arming_prevention_unittest_DEFINES := \
+            USE_GPS_RESCUE=
 
 atomic_unittest_SRC := \
 		$(USER_DIR)/build/atomic.c \
@@ -55,15 +62,15 @@ baro_bmp280_unittest_SRC := \
 		$(USER_DIR)/drivers/barometer/barometer_bmp280.c
 
 baro_bmp280_unittest_DEFINES := \
-                USE_BARO_BMP280 \
-                USE_BARO_SPI_BMP280
+                USE_BARO_BMP280= \
+                USE_BARO_SPI_BMP280=
 
 baro_ms5611_unittest_SRC := \
 		$(USER_DIR)/drivers/barometer/barometer_ms5611.c
 
 baro_ms5611_unittest_DEFINES := \
-                USE_BARO_MS5611 \
-                USE_BARO_SPI_MS5611
+                USE_BARO_MS5611= \
+                USE_BARO_SPI_MS5611=
 
 # This test is disabled due to build errors.
 # Its source code is archived in unit/battery_unittest.cc.txt
@@ -90,18 +97,19 @@ blackbox_encoding_unittest_SRC :=  \
 		$(USER_DIR)/common/typeconversion.c
 
 cli_unittest_SRC := \
-		$(USER_DIR)/interface/cli.c \
+		$(USER_DIR)/cli/cli.c \
 		$(USER_DIR)/config/feature.c \
 		$(USER_DIR)/pg/pg.c \
                 $(USER_DIR)/common/typeconversion.c
 
 cli_unittest_DEFINES := \
-		USE_OSD \
-		USE_CLI \
+		USE_OSD= \
+		USE_CLI= \
 		SystemCoreClock=1000000
 
 cms_unittest_SRC := \
 		$(USER_DIR)/cms/cms.c \
+		$(USER_DIR)/cms/cms_menu_saveexit.c \
 		$(USER_DIR)/common/typeconversion.c \
 		$(USER_DIR)/drivers/display.c
 
@@ -151,13 +159,17 @@ ledstrip_unittest_SRC := \
 		$(USER_DIR)/fc/rc_modes.c \
 		$(USER_DIR)/io/ledstrip.c
 
-
+ledstrip_unittest_DEFINES := \
+        USE_LED_STRIP=
+       
+       
 maths_unittest_SRC := \
 		$(USER_DIR)/common/maths.c
 
 
 osd_unittest_SRC := \
-		$(USER_DIR)/io/osd.c \
+		$(USER_DIR)/osd/osd.c \
+		$(USER_DIR)/osd/osd_elements.c \
 		$(USER_DIR)/common/typeconversion.c \
 		$(USER_DIR)/drivers/display.c \
 		$(USER_DIR)/common/maths.c \
@@ -166,9 +178,10 @@ osd_unittest_SRC := \
 		$(USER_DIR)/fc/runtime_config.c
 
 osd_unittest_DEFINES := \
-		USE_OSD \
-		USE_RTC_TIME \
-		USE_ADC_INTERNAL
+		USE_OSD= \
+		USE_GPS= \
+		USE_RTC_TIME= \
+		USE_ADC_INTERNAL=
 
 
 pg_unittest_SRC := \
@@ -181,7 +194,7 @@ rc_controls_unittest_SRC := \
 		$(USER_DIR)/common/bitarray.c \
 		$(USER_DIR)/common/maths.c \
 		$(USER_DIR)/fc/rc_adjustments.c \
-		$(USER_DIR)/fc/rc_modes.c \
+		$(USER_DIR)/fc/rc_modes.c
 
 
 rx_crsf_unittest_SRC := \
@@ -244,7 +257,7 @@ telemetry_crsf_unittest_SRC := \
 
 telemetry_crsf_unittest_DEFINES := \
 		FLASH_SIZE=128 \
-		STM32F10X_MD \
+		STM32F10X_MD= \
 		__TARGET__="TEST" \
 		__REVISION__="revision"
 
@@ -264,7 +277,7 @@ telemetry_crsf_msp_unittest_SRC := \
 		$(USER_DIR)/fc/runtime_config.c
 
 telemetry_crsf_msp_unittest_DEFINES := \
-		USE_MSP_OVER_TELEMETRY
+		USE_MSP_OVER_TELEMETRY=
 
 
 telemetry_hott_unittest_SRC := \
@@ -278,9 +291,8 @@ telemetry_ibus_unittest_SRC := \
 
 timer_definition_unittest_EXPAND := yes
 
-# NERO and STM32F7X2 are universal targets with dynamic timer management.
 # SITL is a simulator with empty timerHardware and many hearders in target.c.
-timer_definition_unittest_BLACKLIST := NERO SITL STM32F7X2
+timer_definition_unittest_BLACKLIST := SITL
 
 timer_definition_unittest_SRC = \
 		$(TARGET_DIR)/$(call get_base_target,$1)/target.c
@@ -305,7 +317,7 @@ huffman_unittest_SRC := \
 		$(USER_DIR)/common/huffman_table.c
 
 huffman_unittest_DEFINES := \
-		USE_HUFFMAN
+		USE_HUFFMAN=
 
 rcdevice_unittest_SRC := \
 		$(USER_DIR)/common/crc.c \
@@ -313,22 +325,24 @@ rcdevice_unittest_SRC := \
 		$(USER_DIR)/fc/rc_modes.c \
 		$(USER_DIR)/io/rcdevice.c \
 		$(USER_DIR)/io/rcdevice_cam.c \
+		$(USER_DIR)/pg/pg.c \
 
 pid_unittest_SRC :=  \
 		$(USER_DIR)/common/filter.c \
 		$(USER_DIR)/common/maths.c \
 		$(USER_DIR)/drivers/accgyro/gyro_sync.c \
+		$(USER_DIR)/fc/runtime_config.c \
 		$(USER_DIR)/flight/pid.c \
-		$(USER_DIR)/pg/pg.c \
-		$(USER_DIR)/fc/runtime_config.c
+		$(USER_DIR)/pg/pg.c
 
 pid_unittest_DEFINES := \
-		USE_ITERM_RELAX \
-		USE_RC_SMOOTHING_FILTER \
-		USE_ABSOLUTE_CONTROL
+		USE_ITERM_RELAX= \
+		USE_RC_SMOOTHING_FILTER= \
+		USE_ABSOLUTE_CONTROL= \
+		USE_LAUNCH_CONTROL=
 
 rcdevice_unittest_DEFINES := \
-		USE_RCDEVICE
+		USE_RCDEVICE=
 
 vtx_unittest_SRC := \
 		$(USER_DIR)/fc/core.c \
@@ -343,9 +357,16 @@ vtx_unittest_SRC := \
 		$(USER_DIR)/common/bitarray.c
 
 vtx_unittest_DEFINES := \
-		USE_VTX_COMMON \
-		USE_VTX_CONTROL \
-		USE_VTX_SMARTAUDIO
+		USE_VTX_COMMON= \
+		USE_VTX_CONTROL= \
+		USE_VTX_SMARTAUDIO=
+
+rx_spi_spektrum_unittest_SRC := \
+		$(USER_DIR)/rx/cyrf6936_spektrum.c
+
+rx_spi_spektrum_unittest_DEFINES := \
+		USE_RX_SPI \
+		USE_RX_SPEKTRUM
 
 # Please tweak the following variable definitions as needed by your
 # project, except GTEST_HEADERS, which you can use in your own targets
@@ -366,6 +387,7 @@ COMMON_FLAGS = \
 	-Wall \
 	-Wextra \
 	-Werror \
+	-Wno-error=unused-command-line-argument \
 	-ggdb3 \
 	-O0 \
 	-DUNIT_TEST \
@@ -374,10 +396,22 @@ COMMON_FLAGS = \
 
 ifeq ($(shell $(CC) -v 2>&1 | grep -q "clang version" && echo "clang"),clang)
 COMMON_FLAGS += -fblocks
+ifndef CYGWIN
 LDFLAGS	     += -lBlocksRuntime
 endif
+endif
 
-ifndef MACOSX
+USE_PTHREAD = YES
+USE_COVERAGE = YES
+ifdef MACOSX
+	USE_PTHREAD =
+endif
+ifdef CYGWIN
+	USE_PTHREAD =
+	USE_COVERAGE =
+endif
+
+ifdef USE_PTHREAD
 COMMON_FLAGS += -pthread
 endif
 
@@ -390,7 +424,9 @@ CXX_FLAGS = $(COMMON_FLAGS) \
 	-std=gnu++11
 
 # Compiler flags for coverage instrumentation
+ifdef USE_COVERAGE
 COVERAGE_FLAGS := --coverage
+endif
 
 C_FLAGS   += $(COVERAGE_FLAGS)
 CXX_FLAGS += $(COVERAGE_FLAGS)
@@ -407,8 +443,14 @@ endif
 # Gather up all of the tests.
 TEST_SRCS = $(sort $(wildcard $(TEST_DIR)/*.cc))
 TEST_BASENAMES = $(TEST_SRCS:$(TEST_DIR)/%.cc=%)
-TESTS = $(foreach test,$(TEST_BASENAMES),$(if $($(test)_EXPAND),$(foreach \
-		target,$(filter-out $($(test)_BLACKLIST),$(VALID_TARGETS)),$(test).$(target)),$(test)))
+TESTS_TARGET_SPECIFIC = $(foreach test,$(TEST_BASENAMES),$(if $($(test)_EXPAND),$(test)))
+TESTS_TARGET_SPECIFIC_EXPANDED = $(foreach test,$(TESTS_TARGET_SPECIFIC),$(foreach \
+		target,$(filter-out $($(test)_BLACKLIST),$(VALID_TARGETS)),$(test).$(target)))
+
+TESTS = $(foreach test,$(TEST_BASENAMES),$(if $($(test)_EXPAND),,$(test)))
+TESTS_ALL = $(TESTS) $(TESTS_TARGET_SPECIFIC_EXPANDED)
+TESTS_REPRESENTATIVE = $(TESTS) $(foreach test,$(TESTS_TARGET_SPECIFIC), \
+		$(test).$(word 1,$(filter-out $($(test)_BLACKLIST),$(VALID_TARGETS))))
 
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
@@ -421,8 +463,14 @@ include ../../make/build_verbosity.mk
 
 # House-keeping build targets.
 
-## test        : Build and run the Unit Tests (default goal)
+## test        : Build and run the non target specific Unit Tests (default goal)
 test: $(TESTS:%=test_%)
+
+## test-all : Build and run all Unit Tests
+test-all: $(TESTS_ALL:%=test_%)
+
+## test-representative : Build and run a representative subset of the Unit Tests (i.e. run every expanded test only for the first target)
+test-representative: $(TESTS_REPRESENTATIVE:%=test_%)
 
 ## junittest   : Build and run the Unit Tests, producing Junit XML result files."
 junittest: EXEC_OPTS = "--gtest_output=xml:$<_results.xml"
@@ -447,7 +495,7 @@ help what usage: Makefile
 	@echo "Any of the Unit Test programs can be used as goals to build:"
 	@$(foreach test, $(TESTS), echo "    $(OBJECT_DIR)/$(test)/$(test)";)
 	@echo ""
-	@echo "Any of the Unit Test programs can be used as goals to build and run:"
+	@echo "Any of the Unit Test programs (except for target specific unit tests) can be used as goals to build and run:"
 	@$(foreach test, $(TESTS), echo "    test_$(test)";)
 
 ## clean       : Cleanup the UnitTest binaries.
@@ -583,11 +631,19 @@ test_$1: $(OBJECT_DIR)/$1/$(basename $1)
 endef
 
 
-$(eval $(foreach test,$(TESTS),$(call test-specific-stuff,$(test))))
+ifeq ($(MAKECMDGOALS),test-all)
+    $(eval $(foreach test,$(TESTS_ALL),$(call test-specific-stuff,$(test))))
+else
+    ifeq ($(MAKECMDGOALS),test-representative)
+        $(eval $(foreach test,$(TESTS_REPRESENTATIVE),$(call test-specific-stuff,$(test))))
+    else
+        $(eval $(foreach test,$(TESTS),$(call test-specific-stuff,$(test))))
+    endif
+endif
 
-$(foreach test,$(TESTS),$(if $($(basename $(test))_SRC),,$(error \
+$(foreach test,$(TESTS_ALL),$(if $($(basename $(test))_SRC),,$(error \
 	Test 'unit/$(basename $(test)).cc' has no '$(basename $(test))_SRC' variable defined)))
-$(foreach var,$(filter-out TARGET_SRC,$(filter %_SRC,$(.VARIABLES))),$(if $(filter $(var:_SRC=)%,$(TESTS)),,$(error \
+$(foreach var,$(filter-out TARGET_SRC,$(filter %_SRC,$(.VARIABLES))),$(if $(filter $(var:_SRC=)%,$(TESTS_ALL)),,$(error \
 	Variable '$(var)' has no 'unit/$(var:_SRC=).cc' test)))
 
 
@@ -604,4 +660,3 @@ target_list:
 	@echo $(foreach target,$(ALT_TARGETS),$(target)\>$(call get_base_target,$(target)))
 	@echo ========== ALT/BASE FULL MAPPING ==========
 	@echo $(foreach target,$(VALID_TARGETS),$(target)\>$(call get_base_target,$(target)))
-

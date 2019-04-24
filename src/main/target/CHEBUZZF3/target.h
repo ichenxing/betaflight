@@ -46,6 +46,7 @@
 #define SPI2_MOSI_PIN           PB15
 
 #define USE_SDCARD
+#define USE_SDCARD_SPI
 #define SDCARD_DETECT_PIN                    PC14
 #define SDCARD_SPI_INSTANCE                  SPI2
 #define SDCARD_SPI_CS_PIN                    SPI2_NSS_PIN
@@ -104,8 +105,6 @@
 #define CURRENT_METER_ADC_PIN   PC1
 #define RSSI_ADC_PIN            PC2
 #define EXTERNAL1_ADC_PIN       PC3
-
-#undef USE_LED_STRIP
 
 // IO - assuming 303 in 64pin package, TODO
 #define TARGET_IO_PORTA         0xffff

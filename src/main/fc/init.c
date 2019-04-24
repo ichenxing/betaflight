@@ -27,10 +27,12 @@
 
 #include "blackbox/blackbox.h"
 
+#include "cli/cli.h"
+
 #include "common/axis.h"
 #include "common/color.h"
 #include "common/maths.h"
-#include "common/printf.h"
+#include "common/printf_serial.h"
 
 #include "config/config_eeprom.h"
 #include "config/feature.h"
@@ -56,7 +58,9 @@
 #include "drivers/inverter.h"
 #include "drivers/io.h"
 #include "drivers/light_led.h"
+#include "drivers/mco.h"
 #include "drivers/nvic.h"
+#include "drivers/persistent.h"
 #include "drivers/pwm_esc_detect.h"
 #include "drivers/pwm_output.h"
 #include "drivers/rx/rx_pwm.h"
@@ -74,6 +78,7 @@
 #include "drivers/usb_io.h"
 #include "drivers/vtx_rtc6705.h"
 #include "drivers/vtx_common.h"
+#include "drivers/vtx_table.h"
 #ifdef USE_USB_MSC
 #include "drivers/usb_msc.h"
 #endif
@@ -84,10 +89,13 @@
 #include "fc/tasks.h"
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
+#include "fc/dispatch.h"
 
-#include "interface/cli.h"
-#include "interface/msp.h"
+#ifdef USE_PERSISTENT_MSC_RTC
+#include "msc/usbd_storage.h"
+#endif
 
+#include "msp/msp.h"
 #include "msp/msp_serial.h"
 
 #include "pg/adc.h"
@@ -96,6 +104,7 @@
 #include "pg/bus_i2c.h"
 #include "pg/bus_spi.h"
 #include "pg/flash.h"
+#include "pg/mco.h"
 #include "pg/pinio.h"
 #include "pg/piniobox.h"
 #include "pg/pg.h"
@@ -122,7 +131,6 @@
 #include "io/dashboard.h"
 #include "io/asyncfatfs/asyncfatfs.h"
 #include "io/transponder_ir.h"
-#include "io/osd.h"
 #include "io/pidaudio.h"
 #include "io/piniobox.h"
 #include "io/displayport_msp.h"
@@ -131,6 +139,8 @@
 #include "io/vtx_control.h"
 #include "io/vtx_smartaudio.h"
 #include "io/vtx_tramp.h"
+
+#include "osd/osd.h"
 
 #include "scheduler/scheduler.h"
 
@@ -142,6 +152,7 @@
 #include "sensors/esc_sensor.h"
 #include "sensors/gyro.h"
 #include "sensors/initialisation.h"
+#include "sensors/rpm_filter.h"
 #include "sensors/sensors.h"
 
 #include "telemetry/telemetry.h"
@@ -198,29 +209,46 @@ static IO_t busSwitchResetPin        = IO_NONE;
 }
 #endif
 
+#ifdef USE_DSHOT_TELEMETRY
+void activateDshotTelemetry(struct dispatchEntry_s* self)
+{
+    if (!ARMING_FLAG(ARMED) && !isDshotTelemetryActive()) {
+        pwmWriteDshotCommand(ALL_MOTORS, getMotorCount(), DSHOT_CMD_SIGNAL_LINE_CONTINUOUS_ERPM_TELEMETRY, false);
+        dispatchAdd(self, 1e6); // check again in 1 second
+    }
+}
+
+dispatchEntry_t activateDshotTelemetryEntry =
+{
+    activateDshotTelemetry, 0, NULL, false
+};
+#endif
+
 void init(void)
 {
-#ifdef USE_ITCM_RAM
-    /* Load functions into ITCM RAM */
-    extern uint8_t tcm_code_start;
-    extern uint8_t tcm_code_end;
-    extern uint8_t tcm_code;
-    memcpy(&tcm_code_start, &tcm_code, (size_t) (&tcm_code_end - &tcm_code_start));
-#endif
-
-#ifdef USE_FAST_RAM
-    /* Load FAST_RAM variable intializers into DTCM RAM */
-    extern uint8_t _sfastram_data;
-    extern uint8_t _efastram_data;
-    extern uint8_t _sfastram_idata;
-    memcpy(&_sfastram_data, &_sfastram_idata, (size_t) (&_efastram_data - &_sfastram_data));
-#endif
-
 #ifdef USE_HAL_DRIVER
     HAL_Init();
 #endif
 
-    printfSupportInit();
+#if defined(STM32F7)   
+    /* Enable I-Cache */
+    if (INSTRUCTION_CACHE_ENABLE) {
+        SCB_EnableICache();
+    }
+
+    /* Enable D-Cache */
+    if (DATA_CACHE_ENABLE) {
+        SCB_EnableDCache();
+    }
+
+    if (PREFETCH_ENABLE) {
+        LL_FLASH_EnablePrefetch();
+    }
+#endif
+
+#ifdef SERIAL_PORT_COUNT
+    printfSerialInit();
+#endif
 
     systemInit();
 
@@ -232,7 +260,13 @@ void init(void)
 #endif
 
 #ifdef USE_BRUSHED_ESC_AUTODETECT
-    detectBrushedESC();
+    // Opportunistically use the first motor pin of the default configuration for detection.
+    // We are doing this as with some boards, timing seems to be important, and the later detection will fail.
+    ioTag_t motorIoTag = timerioTagGetByUsage(TIM_USE_MOTOR, 0);
+
+    if (motorIoTag) {
+        detectBrushedESC(motorIoTag);
+    }
 #endif
 
     initEEPROM();
@@ -251,6 +285,15 @@ void init(void)
 
     systemState |= SYSTEM_STATE_CONFIG_LOADED;
 
+#ifdef USE_BRUSHED_ESC_AUTODETECT
+    // Now detect again with the actually configured pin for motor 1, if it is not the default pin.
+    ioTag_t configuredMotorIoTag = motorConfig()->dev.ioTags[0];
+
+    if (configuredMotorIoTag && configuredMotorIoTag != motorIoTag) {
+        detectBrushedESC(configuredMotorIoTag);
+    }
+#endif
+
     //i2cSetOverclock(masterConfig.i2c_overclock);
 
     debugMode = systemConfig()->debug_mode;
@@ -259,7 +302,7 @@ void init(void)
     targetPreInit();
 #endif
 
-#if !defined(UNIT_TEST) && !defined(USE_FAKE_LED)
+#if !defined(USE_FAKE_LED)
     ledInit(statusLedConfig());
 #endif
     LED2_ON;
@@ -272,8 +315,7 @@ void init(void)
 
     buttonsInit();
 
-    // Check status of bind plug and exit if not active
-    delayMicroseconds(10);  // allow configuration to settle
+    delayMicroseconds(10);  // allow configuration to settle // XXX Could be removed, too?
 
     if (!isMPUSoftReset()) {
 #if defined(BUTTON_A_PIN) && defined(BUTTON_B_PIN)
@@ -295,6 +337,12 @@ void init(void)
     }
 #endif
 
+    // Note that spektrumBind checks if a call is immediately after
+    // hard reset (including power cycle), so it should be called before
+    // systemClockSetHSEValue and OverclockRebootIfNecessary, as these
+    // may cause soft reset which will prevent spektrumBind not to execute
+    // the bind procedure.
+
 #if defined(USE_SPEKTRUM_BIND)
     if (featureIsEnabled(FEATURE_RX_SERIAL)) {
         switch (rxConfig()->serialrx_provider) {
@@ -310,11 +358,19 @@ void init(void)
     }
 #endif
 
+#ifdef STM32F4
+    // Only F4 has non-8MHz boards
+    systemClockSetHSEValue(systemConfig()->hseMhz * 1000000U);
+#endif
+
 #ifdef USE_OVERCLOCK
     OverclockRebootIfNecessary(systemConfig()->cpu_overclock);
 #endif
 
-    delay(100);
+    // Configure MCO output after config is stable
+#ifdef USE_MCO
+    mcoInit(mcoConfig());
+#endif
 
     timerInit();  // timer must be initialized before any channel is allocated
 
@@ -377,13 +433,17 @@ void init(void)
 
 #ifdef TARGET_BUS_INIT
     targetBusInit();
+
 #else
 
 #ifdef USE_SPI
     spiPinConfigure(spiPinConfig(0));
+#endif
 
-    // Initialize CS lines and keep them high
-    spiPreInit();
+    sensorsPreInit();
+
+#ifdef USE_SPI
+    spiPreinit();
 
 #ifdef USE_SPI_DEVICE_1
     spiInit(SPIDEV_1);
@@ -407,9 +467,15 @@ void init(void)
         if (mscStart() == 0) {
              mscWaitForButton();
         } else {
-             NVIC_SystemReset();
+            systemResetFromMsc();
         }
     }
+#endif
+
+#ifdef USE_PERSISTENT_MSC_RTC
+    // if we didn't enter MSC mode then clear the persistent RTC value
+    persistentObjectWrite(PERSISTENT_OBJECT_RTC_HIGH, 0);
+    persistentObjectWrite(PERSISTENT_OBJECT_RTC_LOW, 0);
 #endif
 
 #ifdef USE_I2C
@@ -476,7 +542,9 @@ void init(void)
 
     if (!sensorsAutodetect()) {
         // if gyro was not detected due to whatever reason, notify and don't arm.
-        indicateFailure(FAILURE_MISSING_ACC, 2);
+        if (isSystemConfigured()) {
+            indicateFailure(FAILURE_MISSING_ACC, 2);
+        }
         setArmingDisabled(ARMING_DISABLED_NO_GYRO);
     }
 
@@ -486,7 +554,9 @@ void init(void)
     // so we are ready to call validateAndFixGyroConfig(), pidInit(), and setAccelerationFilter()
     validateAndFixGyroConfig();
     pidInit(currentPidProfile);
+#ifdef USE_ACC
     accInitFilters();
+#endif
 
 #ifdef USE_PID_AUDIO
     pidAudioInit();
@@ -627,15 +697,16 @@ void init(void)
 #endif
 
 #ifdef USE_FLASHFS
-#if defined(USE_FLASH)
+#if defined(USE_FLASH_CHIP)
     flashInit(flashConfig());
 #endif
     flashfsInit();
 #endif
 
+#ifdef USE_BLACKBOX
 #ifdef USE_SDCARD
     if (blackboxConfig()->device == BLACKBOX_DEVICE_SDCARD) {
-        if (sdcardConfig()->enabled) {
+        if (sdcardConfig()->mode) {
             sdcardInsertionDetectInit();
             sdcard_init(sdcardConfig());
             afatfs_init();
@@ -644,17 +715,21 @@ void init(void)
         }
     }
 #endif
-
-#ifdef USE_BLACKBOX
     blackboxInit();
 #endif
 
+#ifdef USE_ACC
     if (mixerConfig()->mixerMode == MIXER_GIMBAL) {
         accSetCalibrationCycles(CALIBRATING_ACC_CYCLES);
     }
+#endif
     gyroStartCalibration(false);
 #ifdef USE_BARO
     baroSetCalibrationCycles(CALIBRATING_BARO_CYCLES);
+#endif
+
+#ifdef USE_VTX_TABLE
+    vtxTableInit();
 #endif
 
 #ifdef USE_VTX_CONTROL
@@ -662,7 +737,6 @@ void init(void)
 
 #if defined(USE_VTX_COMMON)
     vtxCommonInit();
-    vtxInit();
 #endif
 
 #ifdef USE_VTX_SMARTAUDIO
@@ -720,7 +794,15 @@ void init(void)
 
     setArmingDisabled(ARMING_DISABLED_BOOT_GRACE_TIME);
 
+#ifdef USE_DSHOT_TELEMETRY
+    if (motorConfig()->dev.useDshotTelemetry) {
+        dispatchEnable();
+        dispatchAdd(&activateDshotTelemetryEntry, 5000000);
+    }
+#endif
+
     fcTasksInit();
 
     systemState |= SYSTEM_STATE_READY;
+
 }

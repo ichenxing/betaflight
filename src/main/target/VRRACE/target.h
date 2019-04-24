@@ -55,6 +55,7 @@
 #define MS5611_I2C_INSTANCE I2CDEV_1
 
 #define USE_SDCARD
+#define USE_SDCARD_SPI
 #define SDCARD_DETECT_INVERTED
 #define SDCARD_DETECT_PIN                   PD2
 #define SDCARD_SPI_INSTANCE                 SPI2
@@ -72,8 +73,7 @@
 /*
 */
 /*
-#define SDCARD_DMA_CHANNEL_TX               DMA1_Stream4
-#define SDCARD_DMA_CHANNEL                  0
+#define SPI3_TX_DMA_OPT                     0     // DMA 1 Stream 4 Channel 0
 */
 
 
@@ -155,8 +155,6 @@
 #define SERIALRX_PROVIDER       SERIALRX_SBUS
 
 //#define ENABLE_BLACKBOX_LOGGING_ON_SDCARD_BY_DEFAULT
-
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
 
 #define TARGET_IO_PORTA 0xffff
 #define TARGET_IO_PORTB 0xffff

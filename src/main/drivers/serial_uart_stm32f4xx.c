@@ -27,6 +27,8 @@
 
 #include "platform.h"
 
+#ifdef USE_UART
+
 #include "drivers/system.h"
 #include "drivers/io.h"
 #include "drivers/dma.h"
@@ -36,8 +38,6 @@
 #include "drivers/serial.h"
 #include "drivers/serial_uart.h"
 #include "drivers/serial_uart_impl.h"
-
-#ifdef USE_UART
 
 const uartHardware_t uartHardware[UARTDEV_COUNT] = {
 #ifdef USE_UART1
@@ -289,7 +289,7 @@ void uartIrqHandler(uartPort_t *s)
         }
     }
 
-    if (USART_GetITStatus(s->USARTx, USART_FLAG_ORE) == SET)
+    if (USART_GetITStatus(s->USARTx, USART_IT_ORE) == SET)
     {
         USART_ClearITPendingBit (s->USARTx, USART_IT_ORE);
     }

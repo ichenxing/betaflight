@@ -77,10 +77,13 @@ static char *gpsPacketLogChar = gpsPacketLog;
 int32_t GPS_home[2];
 uint16_t GPS_distanceToHome;        // distance to home point in meters
 int16_t GPS_directionToHome;        // direction to home or hol point in degrees
+uint32_t GPS_distanceFlownInCm;     // distance flown since armed in centimeters
+int16_t GPS_verticalSpeedInCmS;     // vertical speed in cm/s
 float dTnav;             // Delta Time in milliseconds for navigation computations, updated with every good GPS read
-int16_t actual_speed[2] = { 0, 0 };
 int16_t nav_takeoff_bearing;
 navigationMode_e nav_mode = NAV_MODE_NONE;    // Navigation mode
+
+#define GPS_DISTANCE_FLOWN_MIN_GROUND_SPEED_THRESHOLD_CM_S 15 // 5.4Km/h 3.35mph
 
 // moving average filter variables
 #define GPS_FILTERING              1    // add a 5 element moving average filter to GPS coordinates, helps eliminate gps noise but adds latency
@@ -241,7 +244,8 @@ PG_RESET_TEMPLATE(gpsConfig_t, gpsConfig,
     .sbasMode = SBAS_AUTO,
     .autoConfig = GPS_AUTOCONFIG_ON,
     .autoBaud = GPS_AUTOBAUD_OFF,
-    .gps_ublox_use_galileo = false
+    .gps_ublox_use_galileo = false,
+    .gps_set_home_point_once = false
 );
 
 static void shiftPacketLog(void)
@@ -544,6 +548,9 @@ void gpsUpdate(timeUs_t currentTimeUs)
     if (sensors(SENSOR_GPS)) {
         updateGpsIndicator(currentTimeUs);
     }
+    if (!ARMING_FLAG(ARMED) && !gpsConfig()->gps_set_home_point_once) {
+        DISABLE_STATE(GPS_FIX_HOME);
+    }
 #if defined(USE_GPS_RESCUE)
     if (gpsRescueIsConfigured()) {
         updateGPSRescueState();
@@ -590,6 +597,11 @@ bool gpsNewFrame(uint8_t c)
     return false;
 }
 
+// Check for healthy communications
+bool gpsIsHealthy()
+{
+    return (gpsData.state == GPS_RECEIVING_DATA);
+}
 
 /* This is a light implementation of a GPS frame decoding
    This should work with most of modern GPS devices configured to output 5 frames.
@@ -1256,20 +1268,56 @@ float GPS_scaleLonDown = 1.0f;  // this is used to offset the shrinking longitud
 
 void GPS_calc_longitude_scaling(int32_t lat)
 {
-    float rads = (ABS((float)lat) / 10000000.0f) * 0.0174532925f;
+    float rads = (fabsf((float)lat) / 10000000.0f) * 0.0174532925f;
     GPS_scaleLonDown = cos_approx(rads);
 }
 
+////////////////////////////////////////////////////////////////////////////////////
+// Calculate the distance flown and vertical speed from gps position data
+//
+static void GPS_calculateDistanceFlownVerticalSpeed(bool initialize)
+{
+    static int32_t lastCoord[2] = { 0, 0 };
+    static int16_t lastAlt;
+    static int32_t lastMillis;
+
+    int currentMillis = millis();
+
+    if (initialize) {
+        GPS_distanceFlownInCm = 0;
+        GPS_verticalSpeedInCmS = 0;
+    } else {
+        if (STATE(GPS_FIX_HOME) && ARMING_FLAG(ARMED)) {
+            // Only add up movement when speed is faster than minimum threshold
+            if (gpsSol.groundSpeed > GPS_DISTANCE_FLOWN_MIN_GROUND_SPEED_THRESHOLD_CM_S) {
+                uint32_t dist;
+                int32_t dir;
+                GPS_distance_cm_bearing(&gpsSol.llh.lat, &gpsSol.llh.lon, &lastCoord[LAT], &lastCoord[LON], &dist, &dir);
+                GPS_distanceFlownInCm += dist;
+            }
+        }
+
+        GPS_verticalSpeedInCmS = (gpsSol.llh.altCm - lastAlt) * 1000 / (currentMillis - lastMillis);
+        GPS_verticalSpeedInCmS = constrain(GPS_verticalSpeedInCmS, -1500.0f, 1500.0f);
+    }
+    lastCoord[LON] = gpsSol.llh.lon;
+    lastCoord[LAT] = gpsSol.llh.lat;
+    lastAlt = gpsSol.llh.altCm;
+    lastMillis = currentMillis;
+}
 
 void GPS_reset_home_position(void)
 {
-    if (STATE(GPS_FIX) && gpsSol.numSat >= 5) {
-        GPS_home[LAT] = gpsSol.llh.lat;
-        GPS_home[LON] = gpsSol.llh.lon;
-        GPS_calc_longitude_scaling(gpsSol.llh.lat); // need an initial value for distance and bearing calc
-        // Set ground altitude
-        ENABLE_STATE(GPS_FIX_HOME);
+    if (!STATE(GPS_FIX_HOME) || !gpsConfig()->gps_set_home_point_once) {
+        if (STATE(GPS_FIX) && gpsSol.numSat >= 5) {
+            GPS_home[LAT] = gpsSol.llh.lat;
+            GPS_home[LON] = gpsSol.llh.lon;
+            GPS_calc_longitude_scaling(gpsSol.llh.lat); // need an initial value for distance and bearing calc
+            // Set ground altitude
+            ENABLE_STATE(GPS_FIX_HOME);
+        }
     }
+    GPS_calculateDistanceFlownVerticalSpeed(true); //Initialize
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -1302,43 +1350,11 @@ void GPS_calculateDistanceAndDirectionToHome(void)
     }
 }
 
-////////////////////////////////////////////////////////////////////////////////////
-// Calculate our current speed vector from gps position data
-//
-static void GPS_calc_velocity(void)
-{
-    static int16_t speed_old[2] = { 0, 0 };
-    static int32_t last_coord[2] = { 0, 0 };
-    static uint8_t init = 0;
-
-    if (init) {
-        float tmp = 1.0f / dTnav;
-        actual_speed[GPS_X] = (float)(gpsSol.llh.lon - last_coord[LON]) * GPS_scaleLonDown * tmp;
-        actual_speed[GPS_Y] = (float)(gpsSol.llh.lat - last_coord[LAT]) * tmp;
-
-        actual_speed[GPS_X] = (actual_speed[GPS_X] + speed_old[GPS_X]) / 2;
-        actual_speed[GPS_Y] = (actual_speed[GPS_Y] + speed_old[GPS_Y]) / 2;
-
-        speed_old[GPS_X] = actual_speed[GPS_X];
-        speed_old[GPS_Y] = actual_speed[GPS_Y];
-    }
-    init = 1;
-
-    last_coord[LON] = gpsSol.llh.lon;
-    last_coord[LAT] = gpsSol.llh.lat;
-}
-
 void onGpsNewData(void)
 {
     if (!(STATE(GPS_FIX) && gpsSol.numSat >= 5)) {
         return;
     }
-
-    if (!ARMING_FLAG(ARMED))
-        DISABLE_STATE(GPS_FIX_HOME);
-
-    if (!STATE(GPS_FIX_HOME) && ARMING_FLAG(ARMED))
-        GPS_reset_home_position();
 
     // Apply moving average filter to GPS data
 #if defined(GPS_FILTERING)
@@ -1378,8 +1394,9 @@ void onGpsNewData(void)
     dTnav = MIN(dTnav, 1.0f);
 
     GPS_calculateDistanceAndDirectionToHome();
-    // calculate the current velocity based on gps coordinates continously to get a valid speed at the moment when we start navigating
-    GPS_calc_velocity();
+    if (ARMING_FLAG(ARMED)) {
+        GPS_calculateDistanceFlownVerticalSpeed(false);
+    }
 
 #ifdef USE_GPS_RESCUE
     rescueNewGpsData();

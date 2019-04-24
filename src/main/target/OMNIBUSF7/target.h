@@ -44,20 +44,18 @@
 //GYRO & ACC--------------------------------
 #define USE_ACC
 #define USE_GYRO
-#define USE_DUAL_GYRO
+#define USE_MULTI_GYRO
 // ICM-20608-G
 #define USE_ACC_SPI_MPU6500
 #define USE_GYRO_SPI_MPU6500
-//#define MPU_INT_EXTI            PE8
 
 // MPU6000
 #define USE_ACC_SPI_MPU6000
 #define USE_GYRO_SPI_MPU6000
-//#define MPU_INT_EXTI            PD0
 
-// Provisioned, but not used
-#define GYRO_1_EXTI_PIN         NONE
-#define GYRO_2_EXTI_PIN         NONE
+//#define USE_MPU_DATA_READY_SIGNAL
+#define USE_EXTI
+#define USE_GYRO_EXTI
 
 #if defined(OMNIBUSF7V2)
 #define GYRO_1_SPI_INSTANCE     SPI3
@@ -68,6 +66,8 @@
 #define GYRO_2_ALIGN            ALIGN_DEFAULT
 #define ACC_1_ALIGN             CW90_DEG
 #define ACC_2_ALIGN             ALIGN_DEFAULT
+#define GYRO_1_EXTI_PIN         PD0           // MPU6000
+#define GYRO_2_EXTI_PIN         PE8           // ICM20608
 
 #elif defined(FPVM_BETAFLIGHTF7)
 #define GYRO_1_SPI_INSTANCE     SPI1
@@ -78,6 +78,8 @@
 #define ACC_1_ALIGN             CW90_DEG
 #define GYRO_2_ALIGN            CW270_DEG
 #define ACC_2_ALIGN             CW270_DEG
+#define GYRO_1_EXTI_PIN         PD0           // Assume the same as OMNIBUSF7V2, need to verify
+#define GYRO_2_EXTI_PIN         PE8           // Ditto
 
 #else
 #define GYRO_1_SPI_INSTANCE     SPI3
@@ -88,11 +90,9 @@
 #define ACC_1_ALIGN             ALIGN_DEFAULT
 #define GYRO_2_ALIGN            ALIGN_DEFAULT
 #define ACC_2_ALIGN             ALIGN_DEFAULT
+#define GYRO_1_EXTI_PIN         PE8           // ICM20608
+#define GYRO_2_EXTI_PIN         PD0           // MPU6000
 #endif
-
-// TODO: dual gyro support
-//#define USE_MPU_DATA_READY_SIGNAL
-#define USE_EXTI
 
 //UARTS-------------------------------------
 #define USE_VCP
@@ -184,12 +184,12 @@
 
 //SD-----------------------------------------
 #define USE_SDCARD
+#define USE_SDCARD_SPI
 #define SDCARD_DETECT_INVERTED
 #define SDCARD_DETECT_PIN                   PE3
 #define SDCARD_SPI_INSTANCE                 SPI4
 #define SDCARD_SPI_CS_PIN                   SPI4_NSS_PIN
-#define SDCARD_DMA_STREAM_TX_FULL           DMA2_Stream1
-#define SDCARD_DMA_CHANNEL                  4
+#define SPI4_TX_DMA_OPT                     0     // DMA 2 Stream 1 Channel 4
 
 #endif
 
@@ -204,24 +204,30 @@
 #define USE_BARO
 #define USE_BARO_BMP280
 #define USE_BARO_SPI_BMP280
-#define BMP280_SPI_INSTANCE     SPI1
-#define BMP280_CS_PIN           PA1
+#define BARO_SPI_INSTANCE       SPI1
+#define BARO_CS_PIN             PA1
 
 #define USE_MAG
 #define USE_MAG_HMC5883
 #define USE_MAG_QMC5883
 #define USE_MAG_LIS3MDL
 
-#define SENSORS_SET (SENSOR_ACC | SENSOR_BARO)
 //ADC---------------------------------------
 #define DEFAULT_VOLTAGE_METER_SOURCE VOLTAGE_METER_ADC
 #define DEFAULT_CURRENT_METER_SOURCE CURRENT_METER_ADC
 
 #define USE_ADC
 #define ADC_INSTANCE            ADC1
+#define ADC1_DMA_OPT            1  // DMA 2 Stream 4 Channel 0 (compat default)
 #define CURRENT_METER_ADC_PIN   PC2
 #define VBAT_ADC_PIN            PC3
 #define RSSI_ADC_PIN            PC5
+
+// Additional sensors ----------------------
+#define USE_RANGEFINDER
+#define USE_RANGEFINDER_HCSR04
+#define RANGEFINDER_HCSR04_TRIGGER_PIN     PB10 // TX3 for testing
+#define RANGEFINDER_HCSR04_ECHO_PIN        PB11 // RX3 for testing
 
 //DEFAULTS----------------------------------
 
@@ -237,7 +243,6 @@
 #define SERIALRX_PROVIDER       SERIALRX_SBUS
 #endif
 
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
 //PORT'S & TIMERS---------------------------
 #define TARGET_IO_PORTA 0xffff
 #define TARGET_IO_PORTB 0xffff

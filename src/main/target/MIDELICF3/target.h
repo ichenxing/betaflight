@@ -22,14 +22,7 @@
 
 #define TARGET_BOARD_IDENTIFIER "MIF3"
 
-// prevent flash overflow
-#undef USE_CRSF_CMS_TELEMETRY
-#undef USE_GYRO_OVERFLOW_CHECK  // target does not use an affected gyro
-#undef USE_SERIALRX_SUMD
-#undef USE_SERIALRX_SUMH
-#undef USE_SERIALRX_XBUS
-#undef USE_TELEMETRY_HOTT
-#undef USE_TELEMETRY_LTM
+#undef USE_GYRO_OVERFLOW_CHECK
 
 #define LED0_PIN                PB5
 
@@ -72,20 +65,19 @@
 #define USE_SPI
 
 #define USE_SPI_DEVICE_1
-#define SPI1_NSS_PIN            PA4
 #define SPI1_SCK_PIN            PA5
 #define SPI1_MISO_PIN           PA6
 #define SPI1_MOSI_PIN           PA7
 
 #define USE_SPI_DEVICE_2
-#define SPI2_NSS_PIN            PB12
 #define SPI2_SCK_PIN            PB13
 #define SPI2_MISO_PIN           PB14
 #define SPI2_MOSI_PIN           PB15
 
 #define USE_SDCARD
+#define USE_SDCARD_SPI
 #define SDCARD_SPI_INSTANCE                 SPI2
-#define SDCARD_SPI_CS_PIN                   SPI2_NSS_PIN
+#define SDCARD_SPI_CS_PIN                   PB12
 #define SDCARD_DMA_CHANNEL_TX               DMA1_Channel5
 
 #define USE_ADC
@@ -105,34 +97,30 @@
 
 #define USE_RX_FRSKY_SPI_D
 #define USE_RX_FRSKY_SPI_X
+#define USE_RX_SFHSS_SPI
 #define DEFAULT_RX_FEATURE      FEATURE_RX_SPI
 #define RX_SPI_DEFAULT_PROTOCOL RX_SPI_FRSKY_X
 #define USE_RX_FRSKY_SPI_TELEMETRY
 
-#define RX_NSS_PIN               SPI1_NSS_PIN
-#define RX_SCK_PIN               SPI1_SCK_PIN
-#define RX_MISO_PIN              SPI1_MISO_PIN
-#define RX_MOSI_PIN              SPI1_MOSI_PIN
+#define RX_NSS_PIN              PA4
 
-#define RX_FRSKY_SPI_GDO_0_PIN   PB0
+#define RX_SPI_EXTI_PIN         PB0
 
-#define RX_FRSKY_SPI_LED_PIN     PB6
+#define RX_SPI_LED_PIN          PB6
 
+#define USE_RX_CC2500_SPI_PA_LNA
 
-#define USE_RX_FRSKY_SPI_PA_LNA
-
-#define RX_FRSKY_SPI_TX_EN_PIN   PB1
-#define RX_FRSKY_SPI_LNA_EN_PIN  PB11
+#define RX_CC2500_SPI_TX_EN_PIN   PB1
+#define RX_CC2500_SPI_LNA_EN_PIN  PB11
 
 
-#define USE_RX_FRSKY_SPI_DIVERSITY
+#define USE_RX_CC2500_SPI_DIVERSITY
 
-#define RX_FRSKY_SPI_ANT_SEL_PIN PB2
+#define RX_CC2500_SPI_ANT_SEL_PIN PB2
 
 
 #define BINDPLUG_PIN             PC13
 
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
 #define USE_ESCSERIAL
 #define ESCSERIAL_TIMER_TX_PIN   PB9 // Motor 6, can't use escserial for hexa
 

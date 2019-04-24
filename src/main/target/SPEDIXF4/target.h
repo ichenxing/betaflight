@@ -34,7 +34,8 @@
 #define ENABLE_DSHOT_DMAR       true
 
 #define USE_EXTI
-#define MPU_INT_EXTI            PC4
+#define USE_GYRO_EXTI
+#define GYRO_1_EXTI_PIN         PC4
 #define USE_MPU_DATA_READY_SIGNAL
 
 #define USE_GYRO
@@ -143,7 +144,6 @@
 
 #define DEFAULT_RX_FEATURE      FEATURE_RX_SERIAL
 #define DEFAULT_FEATURES        ( FEATURE_OSD | FEATURE_TELEMETRY )
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
 
 #define TARGET_IO_PORTA         ( 0xffff )
 #define TARGET_IO_PORTB         ( 0xffff )

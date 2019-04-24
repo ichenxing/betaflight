@@ -57,6 +57,7 @@
 #define GYRO_1_SPI_INSTANCE     SPI1
 
 #define USE_GYRO
+#define USE_ACC
 
 #define USE_GYRO_SPI_MPU6000
 #define GYRO_1_ALIGN            CW180_DEG
@@ -74,20 +75,18 @@
 #else
 #define MAX7456_SPI_INSTANCE                SPI2
 #define MAX7456_SPI_CS_PIN                  PB12
-//#define MAX7456_DMA_CHANNEL_TX              DMA1_Stream5
-//#define MAX7456_DMA_CHANNEL_RX              DMA1_Stream0
-//#define MAX7456_DMA_IRQ_HANDLER_ID          DMA1_ST0_HANDLER
+//#define MAX7456_DMA_CHANNEL_TX              DMA1_Stream5 // Can't convert to dmaopt
+//#define MAX7456_DMA_CHANNEL_RX              DMA1_Stream0 // Can't convert to dmaopt
 #endif
 
 #if defined(KIWIF4V2)
 #define USE_SDCARD
+#define USE_SDCARD_SPI
 //#define SDCARD_DETECT_PIN                   PB9
 #define SDCARD_SPI_INSTANCE                 SPI2
 #define SDCARD_SPI_CS_PIN                   PB12
-//#define SDCARD_DMA_CHANNEL_TX               DMA1_Stream5
-//#define SDCARD_DMA_CHANNEL                  0
-#define SDCARD_DMA_CHANNEL_TX               DMA1_Stream4
-#define SDCARD_DMA_CHANNEL                  0
+#define SPI2_TX_DMA_OPT                     0     // DMA 1 Stream 4 Channel 0
+#define SPI2_TX_DMA_OPT                     0     // DMA 1 Stream 4 Channel 0
 
 #else
 #define USE_FLASHFS
@@ -161,8 +160,6 @@
 #define DEFAULT_RX_FEATURE      FEATURE_RX_SERIAL
 #define SERIALRX_PROVIDER       SERIALRX_SBUS
 #define SERIALRX_UART           SERIAL_PORT_USART1
-
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
 
 #define TARGET_IO_PORTA         0xffff
 #define TARGET_IO_PORTB         0xffff

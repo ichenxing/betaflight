@@ -33,7 +33,7 @@
 
 // use simulatior's attitude directly
 // disable this if wants to test AHRS algorithm
-#define SKIP_IMU_CALC
+#undef USE_IMU_CALC
 
 //#define SIMULATOR_ACC_SYNC
 //#define SIMULATOR_GYRO_SYNC
@@ -125,6 +125,8 @@
 #undef USE_CAMERA_CONTROL
 #undef USE_BRUSHED_ESC_AUTODETECT
 #undef USE_GPS_RESCUE
+#undef USE_SERIAL_4WAY_BLHELI_BOOTLOADER
+#undef USE_SERIAL_4WAY_SK_BOOTLOADER
 
 #undef USE_I2C
 #undef USE_SPI

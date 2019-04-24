@@ -29,7 +29,7 @@
 
 #include "platform.h"
 
-#if defined(USE_TELEMETRY) && defined(USE_TELEMETRY_FRSKY_HUB)
+#if defined(USE_TELEMETRY_FRSKY_HUB)
 
 #include "common/maths.h"
 #include "common/axis.h"
@@ -67,7 +67,7 @@
 
 #include "telemetry/telemetry.h"
 
-#if defined(USE_ESC_SENSOR)
+#if defined(USE_ESC_SENSOR_TELEMETRY)
 #include "sensors/esc_sensor.h"
 #endif
 
@@ -174,17 +174,19 @@ static void frSkyHubWriteByteInternal(const char data)
    serialWrite(frSkyHubPort, data);
  }
 
+#if defined(USE_ACC)
 static void sendAccel(void)
 {
     for (unsigned i = 0; i < 3; i++) {
         frSkyHubWriteFrame(ID_ACC_X + i, ((int16_t)(acc.accADC[i] * acc.dev.acc_1G_rec) * 1000));
     }
 }
+#endif
 
 static void sendThrottleOrBatterySizeAsRpm(void)
 {
     int16_t data = 0;
-#if defined(USE_ESC_SENSOR)
+#if defined(USE_ESC_SENSOR_TELEMETRY)
     escSensorData_t *escData = getEscSensorData(ESC_SENSOR_COMBINED);
     if (escData) {
         data = escData->dataAge < ESC_DATA_INVALID ? (calcEscRpm(escData->rpm) / 10) : 0;
@@ -208,7 +210,7 @@ static void sendThrottleOrBatterySizeAsRpm(void)
 static void sendTemperature1(void)
 {
     int16_t data = 0;
-#if defined(USE_ESC_SENSOR)
+#if defined(USE_ESC_SENSOR_TELEMETRY)
     escSensorData_t *escData = getEscSensorData(ESC_SENSOR_COMBINED);
     if (escData) {
         data = escData->dataAge < ESC_DATA_INVALID ? escData->temperature : 0;
@@ -389,7 +391,7 @@ static void sendVoltageCells(void)
  */
 static void sendVoltageAmp(void)
 {
-    uint16_t voltage = getBatteryVoltage();
+    uint16_t voltage = getLegacyBatteryVoltage();
     const uint8_t cellCount = getBatteryCellCount();
 
     if (telemetryConfig()->frsky_vfas_precision == FRSKY_VFAS_PRECISION_HIGH) {
@@ -519,10 +521,12 @@ void processFrSkyHubTelemetry(timeUs_t currentTimeUs)
 
     cycleNum++;
 
-    if (sensors(SENSOR_ACC)) {
+#if defined(USE_ACC)
+    if (sensors(SENSOR_ACC) && telemetryIsSensorEnabled(SENSOR_ACC_X | SENSOR_ACC_Y | SENSOR_ACC_Z)) {
         // Sent every 125ms
         sendAccel();
     }
+#endif
 
 #if defined(USE_BARO) || defined(USE_RANGEFINDER) || defined(USE_GPS)
     if (sensors(SENSOR_BARO | SENSOR_RANGEFINDER) | sensors(SENSOR_GPS)) {
@@ -530,11 +534,13 @@ void processFrSkyHubTelemetry(timeUs_t currentTimeUs)
         // Send vertical speed for opentx. ID_VERT_SPEED
         // Unit is cm/s
 #ifdef USE_VARIO
-        frSkyHubWriteFrame(ID_VERT_SPEED, getEstimatedVario());
+        if (telemetryIsSensorEnabled(SENSOR_VARIO)) {
+            frSkyHubWriteFrame(ID_VERT_SPEED, getEstimatedVario());
+        }
 #endif
 
         // Sent every 500ms
-        if ((cycleNum % 4) == 0) {
+        if ((cycleNum % 4) == 0 && telemetryIsSensorEnabled(SENSOR_ALTITUDE)) {
             int32_t altitudeCm = getEstimatedAltitudeCm();
 
             /* Allow 5s to boot correctly othervise send zero to prevent OpenTX
@@ -550,7 +556,7 @@ void processFrSkyHubTelemetry(timeUs_t currentTimeUs)
 #endif
 
 #if defined(USE_MAG)
-    if (sensors(SENSOR_MAG)) {
+    if (sensors(SENSOR_MAG) && telemetryIsSensorEnabled(SENSOR_HEADING)) {
         // Sent every 500ms
         if ((cycleNum % 4) == 0) {
             sendHeading();
@@ -564,21 +570,33 @@ void processFrSkyHubTelemetry(timeUs_t currentTimeUs)
         sendThrottleOrBatterySizeAsRpm();
 
         if (isBatteryVoltageConfigured()) {
-            sendVoltageCells();
-            sendVoltageAmp();
+            if (telemetryIsSensorEnabled(SENSOR_VOLTAGE)) {
+                sendVoltageCells();
+                sendVoltageAmp();
+            }
 
             if (isAmperageConfigured()) {
-                sendAmperage();
-                sendFuelLevel();
+                if (telemetryIsSensorEnabled(SENSOR_CURRENT)) {
+                    sendAmperage();
+                }
+                if (telemetryIsSensorEnabled(SENSOR_FUEL)) {
+                    sendFuelLevel();
+                }
             }
         }
 
 #if defined(USE_GPS)
         if (sensors(SENSOR_GPS)) {
-            sendSpeed();
-            sendGpsAltitude();
+            if (telemetryIsSensorEnabled(SENSOR_GROUND_SPEED)) {
+                sendSpeed();
+            }
+            if (telemetryIsSensorEnabled(SENSOR_ALTITUDE)) {
+                sendGpsAltitude();
+            }
             sendSatalliteSignalQualityAsTemperature2(cycleNum);
-            sendGPSLatLong();
+            if (telemetryIsSensorEnabled(SENSOR_LAT_LONG)) {
+                sendGPSLatLong();
+            }
         } else
 #endif
 #if defined(USE_MAG)

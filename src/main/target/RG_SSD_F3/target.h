@@ -22,11 +22,6 @@
 
 #define TARGET_BOARD_IDENTIFIER "RGF3" // rgSSD_F3
 
-// Removed to make the firmware fit into flash (in descending order of priority):
-#undef USE_RTC_TIME
-#undef USE_RX_MSP
-#undef USE_ESC_SENSOR_INFO
-
 #define LED0_PIN                 PC1
 #define LED1_PIN                 PC0
 
@@ -69,6 +64,7 @@
 #define ENSURE_MPU_DATA_READY_IS_LOW
 
 #define USE_SDCARD
+#define USE_SDCARD_SPI
 #define SDCARD_DETECT_INVERTED
 #define SDCARD_DETECT_PIN        PC14
 #define SDCARD_SPI_INSTANCE      SPI1
@@ -128,8 +124,6 @@
 #define REMAP_TIM16_DMA
 #define REMAP_TIM17_DMA
 #define ADC24_DMA_REMAP
-
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
 
 // IO - stm32f303rc in 64pin package
 #define TARGET_IO_PORTA 0xffff

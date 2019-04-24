@@ -31,7 +31,7 @@
 
 #define TEST_SOUND // for factory testing audio output
 
-#define USE_DUAL_GYRO
+#define USE_MULTI_GYRO
 //#define DEBUG_MODE DEBUG_DUAL_GYRO_DIFF
 
 #define ENABLE_DSHOT_DMAR       true
@@ -43,9 +43,9 @@
 #define BEEPER_INVERTED
 
 #define USE_EXTI
+#define USE_GYRO_EXTI
 #define GYRO_1_EXTI_PIN         PC13
 #define GYRO_2_EXTI_PIN         PC14
-#define MPU_INT_EXTI
 
 #define USE_MPU_DATA_READY_SIGNAL
 #define ENSURE_MPU_DATA_READY_IS_LOW
@@ -57,24 +57,18 @@
 #define USE_ACC_SPI_MPU6500
 
 #if (SPRACINGF7DUAL_REV >= 2)
-#define ACC_MPU6500_1_ALIGN           CW0_DEG
-#define GYRO_MPU6500_1_ALIGN          CW0_DEG
+#define GYRO_1_ALIGN        CW0_DEG
+#define ACC_1_ALIGN         CW0_DEG
 
-#define ACC_MPU6500_2_ALIGN         CW270_DEG
-#define GYRO_MPU6500_2_ALIGN        CW270_DEG
+#define GYRO_2_ALIGN        CW270_DEG
+#define ACC_2_ALIGN         CW270_DEG
 #else
-#define ACC_MPU6500_1_ALIGN           CW180_DEG
-#define GYRO_MPU6500_1_ALIGN          CW180_DEG
+#define GYRO_1_ALIGN        CW180_DEG
+#define ACC_1_ALIGN         CW180_DEG
 
-#define ACC_MPU6500_2_ALIGN         CW270_DEG
-#define GYRO_MPU6500_2_ALIGN        CW270_DEG
+#define GYRO_2_ALIGN        CW270_DEG
+#define ACC_2_ALIGN         CW270_DEG
 #endif
-
-
-#define GYRO_1_ALIGN                GYRO_MPU6500_1_ALIGN
-#define GYRO_2_ALIGN                GYRO_MPU6500_2_ALIGN
-#define ACC_1_ALIGN                ACC_MPU6500_1_ALIGN
-#define ACC_2_ALIGN                ACC_MPU6500_2_ALIGN
 
 #define GYRO_CONFIG_USE_GYRO_DEFAULT GYRO_CONFIG_USE_GYRO_BOTH
 
@@ -149,10 +143,10 @@
 #define SPI3_MOSI_PIN           PB5
 
 #define USE_SDCARD
+#define USE_SDCARD_SPI
 #define SDCARD_SPI_INSTANCE                 SPI3
 #define SDCARD_SPI_CS_PIN                   PC3
-#define SDCARD_DMA_STREAM_TX_FULL           DMA1_Stream7
-#define SDCARD_DMA_CHANNEL                  DMA_CHANNEL_0
+#define SPI3_TX_DMA_OPT                     1  // DMA 1 Stream 7 Channel 0
 
 #define USE_VTX_RTC6705
 #define USE_VTX_RTC6705_SOFTSPI
@@ -171,11 +165,13 @@
 #define USE_ADC
 // It's possible to use ADC1 or ADC3 on this target, same pins.
 //#define ADC_INSTANCE                        ADC1
-//#define ADC1_DMA_STREAM                     DMA2_Stream0
+//#define ADC1_DMA_OPT                        0  // DMA 2 Stream 0 Channel 0 
+
 
 // Using ADC3 frees up DMA2_Stream0 for SPI1_RX (not necessarily, SPI1_RX has DMA2_Stream2 as well)
 #define ADC_INSTANCE                        ADC3
-#define ADC3_DMA_STREAM                     DMA2_Stream0
+#define ADC3_DMA_OPT                        0  // DMA 2 Stream 0 Channel 2 
+
 
 #define VBAT_ADC_PIN                        PC1
 #define CURRENT_METER_ADC_PIN               PC2
@@ -192,8 +188,6 @@
 
 #define USE_PID_AUDIO
 
-#define USE_LED_STRIP
-
 #define USE_TRANSPONDER
 
 #define ENABLE_BLACKBOX_LOGGING_ON_SDCARD_BY_DEFAULT
@@ -205,8 +199,6 @@
 #define SERIALRX_PROVIDER                   SERIALRX_SBUS
 
 #define SPEKTRUM_BIND_PIN       UART2_RX_PIN
-
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
 
 #define USE_BUTTONS
 #define BUTTON_A_PIN            UART5_RX_PIN
